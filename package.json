@@ -2,8 +2,8 @@
   "name": "tizen-p8-exfil",
   "version": "1.0.0",
   "packageType": "app",
-  "appName": "P8Core",
+  "appName": "P8Net",
   "appPath": "index.html",
-  "serviceFile": "probe88.js",
-  "mainFile": "probe88.js"
+  "serviceFile": "probe89.js",
+  "mainFile": "probe89.js"
 }
