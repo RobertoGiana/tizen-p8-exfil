@@ -2,7 +2,7 @@
   "name": "tizen-p8-exfil",
   "version": "1.0.0",
   "packageType": "app",
-  "appName": "P131ROOTD",
+  "appName": "P132JOB",
   "appPath": "index.html",
-  "serviceFile": "probe131.js"
+  "serviceFile": "probe132.js"
 }
