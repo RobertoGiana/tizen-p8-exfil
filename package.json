@@ -2,7 +2,7 @@
   "name": "tizen-p8-exfil",
   "version": "1.0.0",
   "packageType": "app",
-  "appName": "P119TVCTX",
+  "appName": "P120CFG",
   "appPath": "index.html",
-  "serviceFile": "probe119.js"
+  "serviceFile": "probe120.js"
 }
