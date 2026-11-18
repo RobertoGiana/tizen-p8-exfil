@@ -2,7 +2,7 @@
   "name": "tizen-p8-exfil",
   "version": "1.0.0",
   "packageType": "app",
-  "appName": "P124READ",
+  "appName": "P125READ",
   "appPath": "index.html",
-  "serviceFile": "probe124.js"
+  "serviceFile": "probe125.js"
 }
