@@ -2,7 +2,7 @@
   "name": "tizen-p8-exfil",
   "version": "1.0.0",
   "packageType": "app",
-  "appName": "P128WATCH",
+  "appName": "P129ROOT",
   "appPath": "index.html",
-  "serviceFile": "probe128.js"
+  "serviceFile": "probe129.js"
 }
