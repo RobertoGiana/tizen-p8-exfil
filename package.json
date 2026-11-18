@@ -2,7 +2,7 @@
   "name": "tizen-p8-exfil",
   "version": "1.0.0",
   "packageType": "app",
-  "appName": "P122PKG",
+  "appName": "P123STAT",
   "appPath": "index.html",
-  "serviceFile": "probe122.js"
+  "serviceFile": "probe123.js"
 }
