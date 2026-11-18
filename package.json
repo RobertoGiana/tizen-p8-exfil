@@ -2,7 +2,7 @@
   "name": "tizen-p8-exfil",
   "version": "1.0.0",
   "packageType": "app",
-  "appName": "P136REBOOT",
+  "appName": "P137STATE",
   "appPath": "index.html",
-  "serviceFile": "probe136.js"
+  "serviceFile": "probe137.js"
 }
