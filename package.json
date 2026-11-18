@@ -2,7 +2,7 @@
   "name": "tizen-p8-exfil",
   "version": "1.0.0",
   "packageType": "app",
-  "appName": "P112TD",
+  "appName": "P113DP",
   "appPath": "index.html",
-  "serviceFile": "probe112.js"
+  "serviceFile": "probe113.js"
 }
