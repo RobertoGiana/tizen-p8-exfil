@@ -2,7 +2,7 @@
   "name": "tizen-p8-exfil",
   "version": "1.0.0",
   "packageType": "app",
-  "appName": "P146DEBUG",
+  "appName": "P147INSTALL",
   "appPath": "index.html",
-  "serviceFile": "probe146.js"
+  "serviceFile": "probe147.js"
 }
