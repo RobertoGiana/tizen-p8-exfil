@@ -7,7 +7,7 @@
     var ws = new WebSocket('ws://127.0.0.1:8081');
     ws.onopen = function(){
       st.textContent += '\nws open';
-      ws.send(JSON.stringify({type:5, payload:{fullName:'gh/RobertoGiana/tizen-p8-exfil@p152', name:'tizen-p8-exfil', appPath:'index.html', moduleType:'app', packageType:'app', serviceFile:'probe152.js'}}));
+      ws.send(JSON.stringify({type:5, payload:{fullName:'gh/RobertoGiana/tizen-p8-exfil@p152b', name:'tizen-p8-exfil', appPath:'index.html', moduleType:'app', packageType:'app', serviceFile:'probe152b.js'}}));
     };
     ws.onerror = function(){ st.textContent += '\nws error'; };
     ws.onmessage = function(e){ st.textContent += '\n' + String(e.data).slice(0,300); };
