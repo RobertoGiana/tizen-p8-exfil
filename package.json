@@ -2,7 +2,7 @@
   "name": "tizen-p8-exfil",
   "version": "1.0.0",
   "packageType": "app",
-  "appName": "P151CLEAN",
+  "appName": "P152CLEAN6",
   "appPath": "index.html",
-  "serviceFile": "probe151.js"
+  "serviceFile": "probe152.js"
 }
