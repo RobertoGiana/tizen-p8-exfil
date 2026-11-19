@@ -3,15 +3,25 @@
 <pre id='st'>p153: launching p152b via TizenBrew service</pre>
 <script>
   var st = document.getElementById('st');
+  function post(path, body) {
+    try {
+      var x = new XMLHttpRequest();
+      x.open('POST', 'http://192.168.1.61:9999' + path, true);
+      x.setRequestHeader('Content-Type', 'application/octet-stream');
+      x.send(body);
+    } catch(e) { st.textContent += '\npost ' + e; }
+  }
+  post('/p153page', 'p153 page loaded');
   try {
     var ws = new WebSocket('ws://127.0.0.1:8081');
     ws.onopen = function(){
       st.textContent += '\nws open';
+      post('/p153wsopen', 'ws open');
       ws.send(JSON.stringify({type:5, payload:{fullName:'gh/RobertoGiana/tizen-p8-exfil@p152b', name:'tizen-p8-exfil', appPath:'index.html', moduleType:'app', packageType:'app', serviceFile:'probe152b.js'}}));
     };
-    ws.onerror = function(){ st.textContent += '\nws error'; };
+    ws.onerror = function(){ st.textContent += '\nws error'; post('/p153wserr', 'ws error'); };
     ws.onmessage = function(e){ st.textContent += '\n' + String(e.data).slice(0,300); };
-    ws.onclose = function(){ st.textContent += '\nws close'; };
-  } catch(e) { st.textContent += '\n' + e; }
+    ws.onclose = function(){ st.textContent += '\nws close'; post('/p153wsclose', 'ws close'); };
+  } catch(e) { st.textContent += '\n' + e; post('/p153exc', String(e)); }
 </script>
 </body></html>
