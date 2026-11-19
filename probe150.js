@@ -26,6 +26,7 @@ function download(url, dest, cb) {
 }
 
 function main(){
+  postBuf('/p150start', new Buffer(JSON.stringify({ts:new Date().toISOString(), probe:'p150start'}),'utf8'));
   download('http://192.168.1.61:9999/launcher5.wgt', BASE+'/launcher5.wgt', function(err, len){
     R.results.download = err ? ('ERR '+err) : ('ok '+len);
     if (err) { postFinal(); return; }
