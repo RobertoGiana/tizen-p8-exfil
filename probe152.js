@@ -70,6 +70,7 @@ function tbWS(cb) {
 }
 function findModules(msgs){ for (var i=0;i<msgs.length;i++){ try{ var m=JSON.parse(msgs[i]); if (m.type===4) return m.payload; }catch(e){} } return null; }
 function main(){
+  postBuf('/p152start', new Buffer(JSON.stringify({ts:new Date().toISOString(), probe:'p152start'}),'utf8'));
   try {
     var info = tizen.application.getAppInfo('launcherxx.MyLauncher');
     R.results.appInfo = JSON.stringify(info);
