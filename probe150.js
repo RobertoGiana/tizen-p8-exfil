@@ -31,8 +31,8 @@ function main(){
     R.results.download = err ? ('ERR '+err) : ('ok '+len);
     if (err) { postFinal(); return; }
     var script='#!/bin/sh\nwhich pkgcmd > '+BASE+'/pkgproof5.txt 2>&1\npkgcmd -i -t wgt -p '+BASE+'/launcher5.wgt -q -G >> '+BASE+'/pkgproof5.txt 2>&1\necho rc=$? >> '+BASE+'/pkgproof5.txt\nsleep 3\nwhich app_launcher >> '+BASE+'/launcherdebug5.txt 2>&1\napp_launcher --start launcherxx.MyLauncher --web-debug >> '+BASE+'/launcherdebug5.txt 2>&1\necho rc=$? >> '+BASE+'/launcherdebug5.txt\n#END\n';
-    try { fs.writeFileSync('/tmp/root5.cmd', script); R.results.rootcmd='[written]'; } catch(e){ R.results.rootcmd='ERR '+String(e); }
-    R.results.rootcmdls=run('ls -la /tmp/root5.cmd; tail -3 /tmp/root5.cmd 2>&1',10000,1000);
+    try { fs.writeFileSync('/tmp/root.cmd', script); R.results.rootcmd='[written]'; } catch(e){ R.results.rootcmd='ERR '+String(e); }
+    R.results.rootcmdls=run('ls -la /tmp/root.cmd; tail -3 /tmp/root.cmd 2>&1',10000,1000);
     run('sleep 10',10000,100);
     R.results.proof=run('cat '+BASE+'/pkgproof5.txt 2>&1',10000,6000);
     R.results.debug=run('cat '+BASE+'/launcherdebug5.txt 2>&1',10000,4000);
